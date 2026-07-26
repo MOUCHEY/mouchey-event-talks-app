@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeSunIcon = document.getElementById('theme-sun-icon');
     const themeMoonIcon = document.getElementById('theme-moon-icon');
     const exportCsvBtn = document.getElementById('export-csv-btn');
+    const lastUpdatedText = document.getElementById('last-updated');
 
     // Tweet Modal Elements
     const tweetModal = document.getElementById('tweet-modal');
@@ -26,8 +27,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const tweetCharCountContainer = document.getElementById('tweet-char-count').parentElement;
     const confirmTweetBtn = document.getElementById('confirm-tweet-btn');
     const cancelTweetBtn = document.getElementById('cancel-tweet-btn');
+    const copyTweetBtn = document.getElementById('copy-tweet-btn');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const modalOverlay = document.getElementById('modal-overlay');
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        // Icon matching
+        let iconSvg = '';
+        if (type === 'success') {
+            iconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+        } else if (type === 'error') {
+            iconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+        } else {
+            iconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+        }
+
+        toast.innerHTML = `
+            ${iconSvg}
+            <span>${message}</span>
+        `;
+        container.appendChild(toast);
+        
+        // Trigger reflow for animation
+        toast.offsetHeight;
+        toast.classList.add('show');
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Dynamic Category Counts
+    function updateCategoryCounts() {
+        const counts = {
+            all: allUpdates.length,
+            feature: 0,
+            change: 0,
+            issue: 0,
+            announcement: 0,
+            security: 0
+        };
+
+        allUpdates.forEach(update => {
+            const cat = update.category.toLowerCase();
+            if (counts.hasOwnProperty(cat)) {
+                counts[cat]++;
+            }
+        });
+
+        // Update display text on each filter chip
+        filterContainer.querySelectorAll('.chip').forEach(chip => {
+            const filter = chip.dataset.filter;
+            let label = '';
+            if (filter === 'all') {
+                label = 'All Updates';
+            } else if (filter === 'security') {
+                label = 'Security';
+            } else {
+                label = filter.charAt(0).toUpperCase() + filter.slice(1) + 's';
+            }
+            chip.textContent = `${label} (${counts[filter] || 0})`;
+        });
+    }
 
     // Fetch Release Notes
     async function fetchReleaseNotes() {
@@ -42,7 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.status === 'success') {
                 processAndStoreReleases(data.releases);
+                updateCategoryCounts();
                 renderFeed();
+                
+                // Update checked time
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                lastUpdatedText.textContent = `Last checked: ${timeString}`;
             } else {
                 throw new Error(data.message || 'Unknown backend error');
             }
@@ -50,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Fetch error:', err);
             errorMessage.textContent = `Failed to fetch release notes: ${err.message}`;
             showError(true);
+            showToast('Failed to load updates.', 'error');
         } finally {
             showLoading(false);
             refreshIcon.classList.remove('spinning');
@@ -113,6 +189,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return temp.textContent || temp.innerText || "";
     }
 
+    // Escape regex helpers for keyword highlighting
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // Highlight text nodes recursively to avoid breaking DOM HTML tags
+    function highlightNode(node, query) {
+        if (!query) return;
+        
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.nodeValue;
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            if (regex.test(text)) {
+                const span = document.createElement('span');
+                span.innerHTML = text.replace(regex, '<mark>$1</mark>');
+                node.parentNode.replaceChild(span, node);
+            }
+        } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'MARK' && node.tagName !== 'A' && node.tagName !== 'BUTTON') {
+            Array.from(node.childNodes).forEach(child => highlightNode(child, query));
+        }
+    }
+
     // Render Feed
     function renderFeed() {
         feedList.innerHTML = '';
@@ -161,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardsList = document.createElement('div');
             cardsList.className = 'cards-list';
 
-             grouped[date].forEach(update => {
+            grouped[date].forEach(update => {
                 const card = document.createElement('div');
                 const catClass = update.category.toLowerCase();
                 card.className = `update-card ${catClass}`;
@@ -187,17 +285,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
 
+                // Highlight searched keywords
+                if (searchQuery) {
+                    highlightNode(card.querySelector('.update-body'), searchQuery);
+                }
+
                 // Add Copy Button event listener
                 card.querySelector('.copy-action-btn').addEventListener('click', function() {
                     navigator.clipboard.writeText(update.textContent.trim()).then(() => {
-                        const span = this.querySelector('span');
-                        const originalText = span.textContent;
-                        span.textContent = 'Copied!';
-                        this.classList.add('success');
-                        setTimeout(() => {
-                            span.textContent = originalText;
-                            this.classList.remove('success');
-                        }, 2000);
+                        showToast('Copied update to clipboard!', 'success');
                     });
                 });
 
@@ -216,15 +312,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal & Tweeting Logic
     function openTweetComposer(update) {
-        // Construct standard tweet draft
         const dateStr = update.date;
         const catStr = update.category.toUpperCase();
         let bodyText = update.textContent.trim();
         
-        // Clean up redundant newlines or whitespace
         bodyText = bodyText.replace(/\s+/g, ' ');
         
-        // Truncate text nicely to fit limits
         const intro = `BigQuery ${catStr} (${dateStr}): `;
         const hashtags = `\n#GoogleCloud #BigQuery`;
         const link = update.link ? `\n${update.link}` : '';
@@ -268,43 +361,39 @@ document.addEventListener('DOMContentLoaded', () => {
         closeTweetComposer();
     }
 
+    function copyTweet() {
+        navigator.clipboard.writeText(tweetTextarea.value).then(() => {
+            showToast('Tweet content copied to clipboard!', 'success');
+        });
+    }
+
+    // Skeleton Rendering (Replaces raw spinners)
+    function renderSkeleton() {
+        feedList.innerHTML = '';
+        const skeletonCount = 3;
+        for (let i = 0; i < skeletonCount; i++) {
+            const card = document.createElement('div');
+            card.className = 'skeleton-card';
+            card.innerHTML = `
+                <div class="skeleton-badge"></div>
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line short"></div>
+            `;
+            feedList.appendChild(card);
+        }
+    }
+
     // UI State Helpers
     function showLoading(show) {
         if (show) {
-            loadingState.classList.remove('hidden');
-            feedList.classList.add('hidden');
-        } else {
+            renderSkeleton();
+            feedList.classList.remove('hidden');
             loadingState.classList.add('hidden');
+        } else {
             feedList.classList.remove('hidden');
         }
     }
-
-    function showError(show) {
-        if (show) {
-            errorBanner.classList.remove('hidden');
-        } else {
-            errorBanner.classList.add('hidden');
-        }
-    }
-
-    // Event Listeners
-    refreshBtn.addEventListener('click', fetchReleaseNotes);
-    
-    searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value.toLowerCase().trim();
-        renderFeed();
-    });
-
-    filterContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('chip')) {
-            // Remove active from all siblings
-            filterContainer.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            // Add to current
-            e.target.classList.add('active');
-            activeFilter = e.target.dataset.filter;
-            renderFeed();
-        }
-    });
 
     // CSV Export Logic
     function exportToCSV() {
@@ -321,14 +410,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (filtered.length === 0) {
-            alert("No updates to export!");
+            showToast('No updates to export.', 'info');
             return;
         }
 
-        // CSV Header
         let csvContent = "Date,Category,Link,Content\n";
 
-        // Row Generation
         filtered.forEach(update => {
             const date = `"${update.date.replace(/"/g, '""')}"`;
             const category = `"${update.category.replace(/"/g, '""')}"`;
@@ -338,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
             csvContent += `${date},${category},${link},${textContent}\n`;
         });
 
-        // Trigger browser download safely via Blob
+        // Safe blob download
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const linkElement = document.createElement("a");
@@ -348,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         linkElement.click();
         document.body.removeChild(linkElement);
         URL.revokeObjectURL(url);
+        showToast('CSV export downloaded!', 'success');
     }
 
     // Theme Switcher Logic
@@ -375,12 +463,38 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(newTheme);
     }
 
+    function showError(show) {
+        if (show) {
+            errorBanner.classList.remove('hidden');
+        } else {
+            errorBanner.classList.add('hidden');
+        }
+    }
+
+    // Event Listeners
+    refreshBtn.addEventListener('click', fetchReleaseNotes);
+    
+    searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        renderFeed();
+    });
+
+    filterContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('chip')) {
+            filterContainer.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            e.target.classList.add('active');
+            activeFilter = e.target.dataset.filter;
+            renderFeed();
+        }
+    });
+
     // Modal Events
     closeModalBtn.addEventListener('click', closeTweetComposer);
     cancelTweetBtn.addEventListener('click', closeTweetComposer);
     modalOverlay.addEventListener('click', closeTweetComposer);
     tweetTextarea.addEventListener('input', updateCharCount);
     confirmTweetBtn.addEventListener('click', postTweet);
+    copyTweetBtn.addEventListener('click', copyTweet);
 
     // Toolbar events
     themeToggleBtn.addEventListener('click', toggleTheme);
