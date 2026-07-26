@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshIcon = document.getElementById('refresh-icon');
     const searchInput = document.getElementById('search-input');
     const filterContainer = document.getElementById('filter-container');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeSunIcon = document.getElementById('theme-sun-icon');
+    const themeMoonIcon = document.getElementById('theme-moon-icon');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
 
     // Tweet Modal Elements
     const tweetModal = document.getElementById('tweet-modal');
@@ -157,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardsList = document.createElement('div');
             cardsList.className = 'cards-list';
 
-            grouped[date].forEach(update => {
+             grouped[date].forEach(update => {
                 const card = document.createElement('div');
                 const catClass = update.category.toLowerCase();
                 card.className = `update-card ${catClass}`;
@@ -165,17 +169,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="update-header">
                         <span class="badge ${catClass}">${update.category}</span>
-                        <button class="share-action-btn" title="Tweet this update">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            <span>Tweet</span>
-                        </button>
+                        <div class="update-actions">
+                            <button class="action-btn copy-action-btn" title="Copy plain text to clipboard">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                <span>Copy</span>
+                            </button>
+                            <button class="action-btn share-action-btn" title="Tweet this update">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                                <span>Tweet</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="update-body">
                         ${update.htmlContent}
                     </div>
                 `;
+
+                // Add Copy Button event listener
+                card.querySelector('.copy-action-btn').addEventListener('click', function() {
+                    navigator.clipboard.writeText(update.textContent.trim()).then(() => {
+                        const span = this.querySelector('span');
+                        const originalText = span.textContent;
+                        span.textContent = 'Copied!';
+                        this.classList.add('success');
+                        setTimeout(() => {
+                            span.textContent = originalText;
+                            this.classList.remove('success');
+                        }, 2000);
+                    });
+                });
 
                 // Add Share Button event listener
                 card.querySelector('.share-action-btn').addEventListener('click', () => {
@@ -282,6 +306,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // CSV Export Logic
+    function exportToCSV() {
+        const filtered = allUpdates.filter(update => {
+            const matchesFilter = activeFilter === 'all' || 
+                update.category.toLowerCase() === activeFilter.toLowerCase();
+            
+            const matchesSearch = searchQuery === '' || 
+                update.date.toLowerCase().includes(searchQuery) ||
+                update.category.toLowerCase().includes(searchQuery) ||
+                update.textContent.toLowerCase().includes(searchQuery);
+
+            return matchesFilter && matchesSearch;
+        });
+
+        if (filtered.length === 0) {
+            alert("No updates to export!");
+            return;
+        }
+
+        // CSV Header
+        let csvContent = "Date,Category,Link,Content\n";
+
+        // Row Generation
+        filtered.forEach(update => {
+            const date = `"${update.date.replace(/"/g, '""')}"`;
+            const category = `"${update.category.replace(/"/g, '""')}"`;
+            const link = `"${update.link.replace(/"/g, '""')}"`;
+            const textContent = `"${update.textContent.trim().replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+
+            csvContent += `${date},${category},${link},${textContent}\n`;
+        });
+
+        // Trigger browser download safely via Blob
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const linkElement = document.createElement("a");
+        linkElement.setAttribute("href", url);
+        linkElement.setAttribute("download", `bigquery_release_notes_${activeFilter}.csv`);
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+        URL.revokeObjectURL(url);
+    }
+
+    // Theme Switcher Logic
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        setTheme(savedTheme);
+    }
+
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        if (theme === 'light') {
+            themeSunIcon.classList.remove('hidden');
+            themeMoonIcon.classList.add('hidden');
+        } else {
+            themeSunIcon.classList.add('hidden');
+            themeMoonIcon.classList.remove('hidden');
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+    }
+
     // Modal Events
     closeModalBtn.addEventListener('click', closeTweetComposer);
     cancelTweetBtn.addEventListener('click', closeTweetComposer);
@@ -289,6 +382,11 @@ document.addEventListener('DOMContentLoaded', () => {
     tweetTextarea.addEventListener('input', updateCharCount);
     confirmTweetBtn.addEventListener('click', postTweet);
 
+    // Toolbar events
+    themeToggleBtn.addEventListener('click', toggleTheme);
+    exportCsvBtn.addEventListener('click', exportToCSV);
+
     // Initial Load
+    initTheme();
     fetchReleaseNotes();
 });
