@@ -66,3 +66,30 @@ reproductibilité de l'installation.
 
 **Prochaine étape :** exécution officielle du modèle de référence
 (StandardScaler + LogisticRegression, C=1).
+
+---
+
+## Exp 0 — Référence : StandardScaler + LogisticRegression(C=1)
+- **Hypothèse.** Un modèle linéaire simple, sur des pixels normalisés, donne un point de
+  départ solide et rapide.
+- **Code.** `train.py` initial (copie : `experiments/exp_00_train.py`).
+- **Résultat.**
+  - Validation : **0,9633 ± 0,0066** (par graine : 0,9556 ; 0,9722 ; 0,9639 ; 0,9667 ; 0,9583),
+    soit environ 13 erreurs sur 360 images.
+  - Entraînement : 0,9998, donc un écart de **3,65 points**.
+  - Durée : 1,8 s.
+- **Décision de l'arbitre.** REFERENCE.
+- **Reproductibilité.** Scores identiques à la répétition générale : déterminisme vérifié.
+- **Leçons.**
+  1. Le score varie de 1,7 point selon le découpage (95,6 % à 97,2 %). Une mesure unique
+     aurait été trompeuse ; les 5 répétitions sont justifiées.
+  2. Le modèle est presque parfait sur l'entraînement mais perd 3,65 points en validation.
+     Il mémorise une partie du bruit, et sa frontière linéaire ne capte sans doute pas
+     toutes les formes des chiffres.
+  3. 1,8 s sur 120 s autorisées : le budget de temps laisse de la marge pour des modèles
+     plus coûteux.
+- **Transparence.** Lors des tests de l'arbitre (étape 0), le scénario « acceptation »
+  utilisait `StandardScaler + SVC` par défaut. Je connais donc déjà son score de
+  validation : 0,9789. C'est sans conséquence pour le test réservé, mais c'est une
+  information obtenue hors budget. Si on choisit cette piste, elle sera rejouée
+  officiellement et comptée dans le budget.
