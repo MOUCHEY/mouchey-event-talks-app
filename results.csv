@@ -1,0 +1,1 @@
+exp_id,role,timestamp,hypothesis,status,decision,reason,val_acc_mean,val_acc_std,val_acc_min,val_f1_mean,train_acc_mean,overfit_gap,val_acc_per_seed,seeds,duration_s,fit_time_mean_s,params,model,warnings,error,train_sha256,evaluate_sha256,snapshot
