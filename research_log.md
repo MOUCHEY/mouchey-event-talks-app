@@ -93,3 +93,23 @@ reproductibilité de l'installation.
   validation : 0,9789. C'est sans conséquence pour le test réservé, mais c'est une
   information obtenue hors budget. Si on choisit cette piste, elle sera rejouée
   officiellement et comptée dans le budget.
+
+---
+
+## Plan de recherche provisoire (révisé après chaque résultat)
+
+Mode de travail choisi : **une expérience à la fois**. Après chacune : pause, leçon,
+puis attente du « go ».
+
+| # | Hypothèse | Concept |
+|---|---|---|
+| 1 | Un SVC à noyau RBF battra la régression : la frontière entre chiffres n'est pas linéaire. (Score de validation déjà connu : 0,9789, voir « Transparence » ci-dessus.) | astuce du noyau |
+| 2 | Diviser les pixels par 16 vaudra mieux que `StandardScaler`, qui amplifie les pixels de bord presque toujours éteints. | choix de la normalisation |
+| 3 | Ajuster `C` et `gamma` du meilleur SVC. | hyperparamètres, biais/variance |
+| 4 | Les k plus proches voisins, comme autre famille de modèles. | modèles fondés sur la distance |
+| 5–10 | Selon les résultats : ACP avant le SVC, ensembles de modèles, etc. | |
+
+**Changement de machine.** Si la recherche se poursuit sur une autre machine (par exemple
+l'iMac), refaire d'abord la référence dans une copie jetable et comparer les 5 scores
+à l'Exp 0. S'ils sont identiques, on garde ce `results.csv`. Sinon, on repart d'une
+nouvelle référence mesurée sur cette machine.
