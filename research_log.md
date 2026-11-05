@@ -113,3 +113,31 @@ puis attente du « go ».
 l'iMac), refaire d'abord la référence dans une copie jetable et comparer les 5 scores
 à l'Exp 0. S'ils sont identiques, on garde ce `results.csv`. Sinon, on repart d'une
 nouvelle référence mesurée sur cette machine.
+
+---
+
+## Exp 1 — SVC à noyau RBF (C=1, gamma="scale")
+- **Hypothèse (écrite avant le lancement).** Un SVM à noyau RBF dépassera la régression
+  logistique : la frontière entre certains chiffres n'est pas linéaire (1 penché / 7,
+  3 / 8…). Je change une seule idée, la famille de modèle ; `StandardScaler` est conservé.
+- **Biais connu.** Score de validation déjà vu lors des tests de l'arbitre (0,9789).
+  Cette exécution l'officialise et compte dans le budget.
+- **Résultat.**
+  - Validation : **0,9789 ± 0,0070** (par graine : 0,9694 ; 0,9889 ; 0,9778 ; 0,9778 ; 0,9806),
+    contre 0,9633 pour la référence. Les erreurs passent d'environ 13,2 à 7,6 sur 360 (−42 %).
+  - Entraînement : 0,9980, donc un écart de **1,91 point** (contre 3,65).
+  - Durée totale : 8,52 s, dont seulement 0,022 s d'entraînement par graine.
+- **Décision de l'arbitre.** **ACCEPTE** : gain moyen +0,0155, 5 découpages gagnés,
+  0 perdu. C'est le nouveau meilleur modèle.
+- **Leçons.**
+  1. L'hypothèse est confirmée, et de façon robuste : le SVC gagne sur les 5 découpages,
+     pas seulement en moyenne.
+  2. Le score d'entraînement baisse (0,9998 → 0,9980) pendant que la validation monte :
+     le modèle **généralise mieux** au lieu de mémoriser. Raisonner par ressemblance
+     entre images convient mieux à ce problème qu'une frontière droite.
+  3. Durée totale et temps d'entraînement sont deux choses différentes. Les 8,5 s sont
+     presque entièrement dues au démarrage de Python et au chargement de scikit-learn
+     sur un disque « froid » (machine redémarrée). La limite de 2 min porte sur la durée
+     totale ; elle est donc prudente.
+  4. Cette confirmation était attendue (score déjà vu). Les expériences suivantes
+     portent sur des résultats réellement inconnus.

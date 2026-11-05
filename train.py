@@ -10,26 +10,27 @@ Règles :
   * toujours transmettre `seed` aux composants aléatoires (random_state=seed) ;
   * rester sous 2 minutes pour les 5 répétitions.
 
-Version actuelle : MODÈLE DE RÉFÉRENCE (expérience 0).
+Version actuelle : EXP 1 — SVC à noyau RBF (frontière non linéaire).
 """
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 PARAMS = {
-    "model": "LogisticRegression",
+    "model": "SVC",
     "scaler": "StandardScaler",
+    "kernel": "rbf",
     "C": 1.0,
-    "max_iter": 5000,
+    "gamma": "scale",
 }
 
 
 def build_model(seed: int):
-    """Pipeline = mise à l'échelle des pixels, puis régression logistique."""
+    """Pipeline = mise à l'échelle des pixels, puis SVM à noyau RBF."""
     return make_pipeline(
         StandardScaler(),
-        LogisticRegression(C=PARAMS["C"], max_iter=PARAMS["max_iter"], random_state=seed),
+        SVC(kernel=PARAMS["kernel"], C=PARAMS["C"], gamma=PARAMS["gamma"], random_state=seed),
     )
 
 
