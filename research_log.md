@@ -141,3 +141,49 @@ nouvelle référence mesurée sur cette machine.
      totale ; elle est donc prudente.
   4. Cette confirmation était attendue (score déjà vu). Les expériences suivantes
      portent sur des résultats réellement inconnus.
+
+---
+
+## Exp 2 — SVC RBF sans StandardScaler (pixels bruts 0–16)
+- **Observation préalable (développement uniquement, aucun modèle entraîné).**
+  - 16 pixels sur 64 ont un écart-type < 1, tous sur les colonnes 0 et 7 ; 3 sont constants.
+  - Le pixel n° 56 n'est allumé que sur 1 image sur 1 437. Après `StandardScaler`, il
+    atteint 37,9, contre environ 1 à 1,5 pour un pixel central.
+  - Dans le noyau RBF (écarts au carré), cette tache isolée pèse environ 1 400 fois plus
+    qu'un pixel central.
+- **Hypothèse (écrite avant le lancement).** Supprimer `StandardScaler` améliorera la
+  validation. Chaque pixel gardera un poids proportionnel à son encre, et les traits
+  parasites en bordure ne domineront plus la ressemblance entre images.
+- **Note.** Avec `gamma="scale"`, diviser par 16 équivaut exactement à ne rien faire
+  (invariance d'échelle) : on retire donc simplement le scaler. Une seule idée change ;
+  `C=1` et `gamma="scale"` sont conservés.
+- **Résultat.**
+  - Validation : **0,9856 ± 0,0053** (par graine : 0,9778 ; 0,9889 ; 0,9861 ; 0,9917 ; 0,9833).
+    En images bien classées : [352, 356, 355, 357, 354] contre [349, 356, 352, 352, 353].
+    Les erreurs passent d'environ 7,6 à 5,2 sur 360.
+  - Entraînement : 0,9976, donc un écart de **1,20 point** (contre 1,91).
+  - Durée : 1,6 s.
+- **Décision de l'arbitre.** **ACCEPTE** : gain +0,0067, annoncé « 4 gagnés / 1 perdu / 0 égalité ».
+- **⚠️ Anomalie découverte dans l'arbitre.** Sur la graine 1, les deux modèles ont
+  356/360, pourtant l'arbitre compte une défaite.
+  - Cause : `results.csv` stocke les scores arrondis à 4 décimales. Le meilleur est relu
+    arrondi (0,9889), alors que le candidat est comparé en pleine précision
+    (0,98888…). Une égalité devient donc une défaite si le meilleur a été arrondi
+    vers le haut, et une **fausse victoire** s'il a été arrondi vers le bas.
+  - Audit exact, en nombres d'images (k = score × 360, sans ambiguïté) :
+    - exp 1 : 5/0/0 ;
+    - exp 2 : **4 gagnés / 0 perdu / 1 égalité**.
+    Les deux décisions sont **inchangées** ; le passé est sain.
+  - Risque pour la suite : le meilleur actuel (exp 2) est arrondi vers le bas sur les
+    graines 2 et 4. Une égalité y serait comptée comme victoire, ce qui pourrait faire
+    accepter à tort un faux progrès.
+  - Conformément au protocole, `evaluate.py` n'a pas été modifié : décision soumise à
+    l'utilisateur avant l'Exp 3.
+- **Leçons.**
+  1. L'hypothèse est confirmée : la normalisation par pixel amplifiait le bruit des bords.
+     Supprimer une étape a amélioré le modèle. Une étape de prétraitement « standard »
+     n'est pas automatiquement bonne.
+  2. Le sur-apprentissage diminue encore (1,91 → 1,20 point) : le modèle n'apprend plus
+     des taches parasites.
+  3. Même un arbitre testé peut avoir un bug. Relire les résultats bruts avec un œil
+     critique fait partie du métier.

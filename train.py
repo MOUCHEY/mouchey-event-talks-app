@@ -10,16 +10,15 @@ Règles :
   * toujours transmettre `seed` aux composants aléatoires (random_state=seed) ;
   * rester sous 2 minutes pour les 5 répétitions.
 
-Version actuelle : EXP 1 — SVC à noyau RBF (frontière non linéaire).
+Version actuelle : EXP 2 — SVC à noyau RBF sur pixels bruts (sans StandardScaler).
 """
 
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 PARAMS = {
     "model": "SVC",
-    "scaler": "StandardScaler",
+    "scaler": "none",
     "kernel": "rbf",
     "C": 1.0,
     "gamma": "scale",
@@ -27,9 +26,8 @@ PARAMS = {
 
 
 def build_model(seed: int):
-    """Pipeline = mise à l'échelle des pixels, puis SVM à noyau RBF."""
+    """Pipeline = SVM à noyau RBF directement sur les pixels bruts (0 à 16)."""
     return make_pipeline(
-        StandardScaler(),
         SVC(kernel=PARAMS["kernel"], C=PARAMS["C"], gamma=PARAMS["gamma"], random_state=seed),
     )
 
