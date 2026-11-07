@@ -1,0 +1,29 @@
+# Configuration du labo — fait partie du JUGE : seul un humain la modifie.
+# Changer une valeur ici change la règle du jeu : repars alors d'un results.tsv vide.
+
+[lab]
+results_file = "results/results.tsv"     # surchargeable par la variable QUANT_LAB_RESULTS (agents en parallèle)
+holdout_log  = "results/holdout_log.tsv"
+baseline     = "strategies/baseline_equal_weight.py"
+
+[data]
+research_file = "data/research.csv"
+holdout_file  = "data/holdout/prices.csv"  # peut pointer hors du projet, ex. "~/quant-holdout/prices.csv"
+source_file   = "data/source.json"
+universe = ["SPY", "QQQ", "IWM", "EFA", "EEM", "TLT", "IEF", "GLD", "DBC", "VNQ"]
+start         = "2005-01-01"   # début de l'historique fourni aux stratégies (échauffement des signaux)
+eval_start    = "2007-01-01"   # début de la fenêtre notée — la même pour toutes les stratégies
+holdout_start = "2023-01-01"   # tout ce qui suit est réservé à l'examen final (humain uniquement)
+
+[backtest]
+cost_bps = 5.0                 # coût par unité de turnover (1.0 = 100 % du portefeuille échangé), en points de base
+periods_per_year = 252
+
+[gates]                        # une stratégie qui échoue à une seule porte est REJETÉE
+max_gross_leverage  = 2.0      # somme des |poids| maximale
+max_drawdown        = 0.35     # perte max depuis un sommet
+max_annual_turnover = 25.0     # nombre de fois le portefeuille échangé par an
+n_folds             = 4        # la fenêtre notée est coupée en 4 périodes consécutives…
+min_positive_folds  = 3        # …et le Sharpe doit être positif sur au moins 3 d'entre elles
+lookahead_checks    = 5        # nombre de coupures aléatoires du contrôle anti-lookahead
+min_history         = 260      # première coupure possible (en jours de bourse)

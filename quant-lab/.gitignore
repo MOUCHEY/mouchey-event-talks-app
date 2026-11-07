@@ -1,0 +1,7 @@
+# Données de marché : non versionnées (licence + taille). Recrée-les avec scripts/fetch_data.py
+data/
+# Verrous du registre
+results/*.lock
+__pycache__/
+*.pyc
+.venv/
