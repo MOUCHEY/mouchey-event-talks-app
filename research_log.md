@@ -351,3 +351,44 @@ nouvelle référence mesurée sur cette machine.
   4. **Un comité n'aide que si ses membres se trompent sur des images différentes.** Ici,
      kNN et MLP sont rarement d'accord contre le SVC (9 fois sur 5 385) : leurs erreurs
      recouvrent largement celles du SVC, ou bien ils ne s'accordent pas entre eux.
+
+---
+
+## Pilote — Redressement de l'écriture (deskewing), hors budget
+- **Hypothèse.** Redresser chaque chiffre penché avant le SVC de l'exp 3 réduira les
+  confusions entre formes (cible : « 8 étroit et penché → 1 »).
+  - Méthode : inclinaison mesurée par les moments de l'encre
+    (alpha = cov(ligne, colonne) / var(ligne)), puis cisaillement inverse et recentrage
+    (`scipy.ndimage.affine_transform`, interpolation linéaire).
+  - Prétraitement image par image, sans paramètre appris : aucune fuite possible.
+- **Protocole du pilote.** Prédictions hors pli (5 plis) sur les parties entraînement des
+  5 découpages, validation jamais lue. On compare A (exp 3) et B (redressement + exp 3).
+- **Règle de décision fixée avant le pilote.**
+  - Bilan net ≥ **+11 images** sur 5 385 → expérience officielle n° 6.
+  - Sinon → arrêt de la recherche et évaluation finale.
+  - Justification du seuil : l'arbitre exige environ +3,6 images sur 1 800 en
+    validation, soit environ ×3 sur 5 385.
+- **Code.** `pilots/deskew_pilot.py` (reproductible).
+- **Résultat du pilote.**
+  - Bilan net : **−23 images** sur 5 385 (par graine : −3, −7, 0, −4, −9). Seuil : +11.
+  - Corrections (51) : la cible est atteinte, « 8 prédit 1 » est corrigé 5 fois, et
+    « 9 prédit 5 » 5 fois.
+  - Casses (74) : surtout « 6 → 4 » ×8, et « 3 → 5 ou 9 » ×9.
+  - (Une première version affichait « était » au lieu de « B prédit » pour les casses ;
+    étiquette corrigée, nombres identiques au second lancement.)
+- **Décision (règle fixée à l'avance).** **ARRÊT de la recherche → évaluation finale.**
+  Aucune expérience officielle n° 6 ; le budget s'arrête à 5/10.
+- **Leçons.**
+  1. **Les données sont déjà presque droites.** Inclinaison médiane +0,04 colonne par
+     ligne, et 90 % des chiffres sous ±0,21, soit moins d'un pixel de décalage sur toute
+     la hauteur. Pour la plupart des images, le « redressement » est un cisaillement
+     sous-pixel : une simple interpolation qui **floute** (visible sur le test unitaire,
+     où un trait net devient une bande de 2 colonnes). À 8×8, chaque pixel compte : le
+     flou détruit plus d'information qu'il n'en corrige.
+  2. **Les moments confondent forme et inclinaison.** Un 6 (boucle en bas à gauche,
+     hampe en haut à droite) « paraît » penché ; le redresser le déforme vers un 4.
+     Une mesure globale ne sait pas distinguer la géométrie propre d'un chiffre du style
+     de l'écrivain.
+  3. **Le pilote a joué son rôle.** Une idée nuisible a été écartée sans dépenser de
+     budget ni user la validation. Le seuil fixé à l'avance a rendu la décision
+     automatique, même si l'idée corrigeait bien sa cible (« 8 → 1 »).
