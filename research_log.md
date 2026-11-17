@@ -187,3 +187,22 @@ nouvelle référence mesurée sur cette machine.
      des taches parasites.
   3. Même un arbitre testé peut avoir un bug. Relire les résultats bruts avec un œil
      critique fait partie du métier.
+
+---
+
+## Amendement n° 1 de l'arbitre (approuvé par l'utilisateur : option A)
+- **Correctif.** Une ligne dans `evaluate.py` : le candidat est arrondi à 4 décimales,
+  comme le meilleur relu dans `results.csv`, avant la comparaison appariée.
+- **Preuve, sur une copie jetable.** Le modèle de l'exp 2 est comparé à lui-même.
+  - Avant : « 2 gagnés / 3 perdus », alors qu'il ne devrait y avoir que des égalités.
+  - Après : « 0 / 0 / **5 égalités** ».
+- **Historique.** Décisions des exp 1 et 2 revérifiées en nombres d'images : inchangées.
+  Aucune expérience à refaire.
+- **Traçabilité.**
+  - Empreinte : `492b78ce…` → `6c8d1816…`.
+  - Les lignes 0 à 2 de `results.csv` portent l'ancienne empreinte ; les suivantes
+    porteront la nouvelle.
+  - Amendement consigné dans `program.md` § 9.
+- **Leçon.** Les 12 tests de l'étape 0 ne comparaient jamais deux scores égaux : un cas
+  limite oublié suffit à cacher un bug. Tester les égalités et les valeurs aux bornes
+  est un réflexe à prendre.

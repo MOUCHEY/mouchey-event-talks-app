@@ -290,7 +290,10 @@ def cmd_run(hypothesis: str) -> None:
         else:
             best = current_best(rows)
             best_scores = [float(v) for v in best["val_acc_per_seed"].split(";")]
-            row["decision"], row["reason"] = decide(list(va), best_scores)
+            # Amendement n°1 (approuvé par l'utilisateur après l'exp 2) : comparer le candidat
+            # à la MÊME précision que le meilleur relu dans le CSV (4 décimales). Sinon une
+            # égalité exacte apparaît comme une victoire ou une défaite selon l'arrondi.
+            row["decision"], row["reason"] = decide([float(_fmt(v)) for v in va], best_scores)
             row["reason"] += f" vs exp {best['exp_id']}"
     else:
         row["decision"], row["reason"] = "ECHEC", res["status"]

@@ -96,3 +96,12 @@ python evaluate.py status              # tableau + budget
 python evaluate.py restore             # revenir au meilleur train.py
 python evaluate.py final               # évaluation finale unique
 ```
+
+## 9. Amendements au protocole
+
+Toute modification de `evaluate.py` exige l'accord explicite de l'utilisateur. Elle doit
+corriger un défaut de mesure sans favoriser aucun modèle, et elle est consignée ici.
+
+| # | Date | Après | Changement | Empreinte |
+|---|---|---|---|---|
+| 1 | 2026-11-17 | exp 2 | Le candidat est comparé au meilleur avec la même précision (4 décimales) : les égalités exactes ne comptent plus comme victoires ou défaites. Décisions passées revérifiées : inchangées. | `492b78ce…` → `6c8d1816…` |
