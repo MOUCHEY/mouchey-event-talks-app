@@ -311,3 +311,43 @@ nouvelle référence mesurée sur cette machine.
      paramètres stockés tels quels pour `clone`), l'augmentation placée à l'intérieur
      de la validation croisée, le test unitaire et l'estimation du coût avant lancement,
      le parallélisme `n_jobs`.
+
+---
+
+## Exp 5 — Comité de 3 modèles au vote pondéré (SVC + kNN + MLP)
+- **Hypothèse (écrite avant le lancement).** Des modèles aux biais différents corrigeront
+  certaines formes ambiguës. Le SVC de l'exp 3 décide, sauf si les k plus proches voisins
+  ET un réseau de neurones (une couche de 128 neurones) sont d'accord contre lui.
+- **Correction de conception.** Poids 1,5 / 1 / 1 au lieu des 2 / 1 / 1 annoncés.
+  - Avec 2 / 1 / 1, le cas « SVC contre les deux autres » donne une égalité 2-2, tranchée
+    par `argmax` au profit du plus petit chiffre, ce qui est arbitraire (vérifié sur des
+    cas tests).
+  - Avec 1,5 / 1 / 1, la règle annoncée est appliquée exactement.
+- **Étude pilote (prédictions hors pli sur les parties entraînement, validation jamais lue).**
+  - Exactitude seule : SVC 0,9887 ; kNN 0,9844 ; MLP 0,9697.
+  - Le comité renverse le SVC 9 fois sur 5 385 : 4 corrections, 3 casses, soit un net
+    de +1.
+- **Prédiction enregistrée.** Gain nul, **rejet attendu**. Lancement maintenu (18 s) pour
+  vérifier si le pilote prédit bien le verdict de la validation.
+- **Coût estimé.** Environ 18 s.
+- **Résultat.**
+  - Validation : **0,9917 ± 0,0056** (par graine : 0,9889 ; 0,9972 ; 0,9944 ; 0,9944 ; 0,9833).
+    En images : [356, 359, 358, 358, 354] contre [355, 359, 358, 357, 354], soit des
+    écarts de [+1, 0, 0, +1, 0] : **+2 images sur 1 800**.
+  - Entraînement : 1,0000.
+  - Durée : 18,8 s (estimation : 18 s).
+- **Décision de l'arbitre.** **REJETE** : gain +0,0011 (< 0,002), 2 gagnés / 0 perdu /
+  3 égalités (< 3 gagnés). `train.py` restauré depuis l'exp 3.
+- **Leçons.**
+  1. **Le pilote a prédit le verdict.** Il annonçait un net de +1 (corrections moins
+     casses) sur l'entraînement ; la validation donne +2. Un pilote hors pli sur
+     l'entraînement est donc un **filtre fiable et gratuit** pour trier les idées avant
+     de dépenser du budget, sans user la validation.
+  2. **Un chiffre plus haut n'est pas un progrès.** 0,9917 > 0,9906 est tentant, mais
+     2 images sur 1 800, c'est du bruit. Passer outre la règle « parce que la moyenne
+     monte », c'est exactement ainsi qu'on se fait piéger par la malédiction du gagnant.
+  3. **Rasoir d'Ockham.** Même sans perte, 3 modèles au lieu d'un (plus lent, plus
+     complexe à maintenir) pour un gain invisible : le modèle simple l'emporte.
+  4. **Un comité n'aide que si ses membres se trompent sur des images différentes.** Ici,
+     kNN et MLP sont rarement d'accord contre le SVC (9 fois sur 5 385) : leurs erreurs
+     recouvrent largement celles du SVC, ou bien ils ne s'accordent pas entre eux.
