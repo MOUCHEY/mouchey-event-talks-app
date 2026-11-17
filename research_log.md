@@ -257,3 +257,57 @@ nouvelle référence mesurée sur cette machine.
   4. **Le coût monte : 33 s** (environ ×20, pour 36 combinaisons × 5 plis × 5
      répétitions). Il reste de la marge sous 120 s, mais toute idée plus coûteuse devra
      réduire la grille.
+
+---
+
+## Exp 4 — Augmentation par décalages d'un pixel (entraînement seulement)
+- **Analyse d'erreurs préalable (validation du modèle exp 3, hors budget).**
+  - 17 erreurs sur 1 800 prédictions. Confusions entre formes à boucles :
+    9→8 ×3, 8→1 ×3, 9→3 ×2, 5→9 ×2, 3→7 ×2, 9→5 ×2, 8→6, 3→5, 7→9.
+  - Le centre d'encre des images ratées est normal (≈ 3,5 ; 3,5) : ce sont des
+    **formes ambiguës**, pas des chiffres décentrés.
+- **Hypothèse (écrite avant le lancement).** Ajouter à l'entraînement 4 copies décalées
+  d'un pixel (haut, bas, gauche, droite) améliorera la validation : le modèle apprendra à
+  tolérer les variations locales de position des traits.
+- **Attente révisée à la baisse** après l'analyse d'erreurs : les erreurs ne viennent pas
+  d'un décalage global. Gain faible probable ; un rejet est plausible.
+- **Changement.**
+  - Classe `ShiftAugmentedSVC` : l'augmentation a lieu dans `fit` uniquement, donc
+    jamais en validation. Elle est placée **dans** `GridSearchCV`, pour éviter une fuite
+    entre les plis internes.
+  - Effet de bord assumé : la grille passe de 36 à 9 combinaisons
+    (C ∈ {1 ; 3 ; 10} × γ ∈ {scale ; 0,0008 ; 0,0016}), à cause du coût ×5. Elle couvre
+    toutes les valeurs choisies à l'exp 3.
+  - `n_jobs=4` : même résultat, plus rapide.
+- **Vérifications avant le lancement (entraînement seul).**
+  - Test unitaire de `shift_images` : 5 cas sur 5 réussis.
+  - `clone()` conserve les paramètres.
+  - Coût estimé : environ 38 s.
+- **Résultat.**
+  - Validation : **0,9894 ± 0,0023** (par graine : 0,9889 ; 0,9917 ; 0,9889 ; 0,9917 ; 0,9861).
+    En images : [356, 357, 356, 357, 355] contre [355, 359, 358, 357, 354] pour l'exp 3,
+    soit des écarts de [+1, −2, −2, 0, +1].
+  - Entraînement : 1,0000.
+  - Durée : 33,2 s (estimation : 38 s).
+- **Décision de l'arbitre.** **REJETE** : gain −0,0011, 2 gagnés / 2 perdus / 1 égalité.
+  `train.py` restauré depuis l'exp 3 ; la version ratée reste dans
+  `experiments/exp_04_train.py`.
+- **Leçons.**
+  1. **L'analyse d'erreurs avait vu juste.** Les erreurs restantes sont des formes
+     ambiguës, pas des décalages ; apprendre l'invariance par translation ne les corrige
+     pas. Avoir revu l'attente à la baisse *avant* le lancement rend ce rejet instructif,
+     et non décevant.
+  2. **Plus stable n'est pas meilleur.** L'écart-type entre découpages chute
+     (0,0058 → 0,0023) : le modèle augmenté est plus régulier, mais sa moyenne est
+     légèrement plus basse. Il plafonne autour de 356-357 images partout, là où l'exp 3
+     atteignait 358-359 sur certains découpages.
+  3. **Écarts de ±1 à 2 images = bruit de mesure.** La règle (≥ 3 découpages gagnés,
+     gain ≥ 0,2 point) a correctement refusé un changement qui ne se distingue pas du
+     hasard.
+  4. **Limite d'interprétation.** La grille a aussi été réduite (36 → 9), ce qui empêche
+     d'attribuer le résultat *uniquement* à l'augmentation. Elle couvrait toutes les
+     valeurs choisies à l'exp 3 ; c'est donc probablement l'augmentation qui ne paie pas.
+  5. **Compétences acquises.** Une classe compatible scikit-learn (`fit`, `predict`,
+     paramètres stockés tels quels pour `clone`), l'augmentation placée à l'intérieur
+     de la validation croisée, le test unitaire et l'estimation du coût avant lancement,
+     le parallélisme `n_jobs`.
