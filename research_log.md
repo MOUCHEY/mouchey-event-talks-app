@@ -206,3 +206,54 @@ nouvelle référence mesurée sur cette machine.
 - **Leçon.** Les 12 tests de l'étape 0 ne comparaient jamais deux scores égaux : un cas
   limite oublié suffit à cacher un bug. Tester les égalités et les valeurs aux bornes
   est un réflexe à prendre.
+
+---
+
+## Exp 3 — Réglage automatique de C et gamma par validation croisée interne
+- **Observation préalable (partie entraînement de chaque découpage).**
+  `gamma="scale"` ≈ 0,00043 pour les 5 graines, très stable.
+- **Hypothèse (écrite avant le lancement).** Des valeurs de `C` et `gamma` choisies par
+  validation croisée **interne**, sur les seules données d'entraînement de chaque
+  répétition, battront les valeurs par défaut (C=1, gamma="scale").
+  - Pourquoi : les valeurs par défaut sont génériques. L'entraînement reste à 0,9976 < 1 :
+    `C=1` freine peut-être un peu trop (biais).
+  - Risque : la sélection interne, sur environ 860 images, est bruitée. Le gain pourrait
+    rester sous le seuil.
+- **Changement (une seule idée : la méthode de choix des hyperparamètres).**
+  - `GridSearchCV`, 36 combinaisons : C ∈ {0,3 ; 1 ; 3 ; 10 ; 30 ; 100} ×
+    gamma ∈ {0,0001 ; 0,0002 ; "scale" ; 0,0008 ; 0,0016 ; 0,0032}.
+  - Validation interne : `StratifiedKFold` à 5 plis, mélangé avec la graine de la
+    répétition.
+  - Égalités : la première combinaison est gardée, soit la plus simple (petit C, petit gamma).
+  - Pixels bruts, sans scaler (comme l'exp 2).
+- **Résultat.**
+  - Validation : **0,9906 ± 0,0058** (par graine : 0,9861 ; 0,9972 ; 0,9944 ; 0,9917 ; 0,9833).
+    En images : [355, 359, 358, 357, 354] contre [352, 356, 355, 357, 354], soit des
+    écarts de [+3, +3, +3, 0, 0]. Environ 3,4 erreurs sur 360, contre 5,2.
+  - Entraînement : 0,9996, donc un écart de **0,91 point** (contre 1,20).
+  - Durée : 33,3 s, contre 1,6 s.
+- **Décision de l'arbitre (corrigé).** **ACCEPTE** : gain +0,0050, 3 gagnés / 0 perdu /
+  2 égalités. Avec l'ancien arbitre, l'égalité de la graine 4 aurait compté comme une
+  fausse victoire.
+- **Inspection a posteriori (parties entraînement uniquement, validation jamais lue).**
+  - Choix selon la graine :
+    - graine 0 : C=10, γ=scale ;
+    - graines 1 et 2 : C=3, γ=0,0008 ;
+    - graine 3 : C=1, γ=0,0008 ;
+    - graine 4 : C=1, γ=0,0016.
+  - Gain du choix sur le défaut, en validation croisée interne : +0,2 à +0,7 point.
+  - Dans chaque découpage, les 3 meilleures combinaisons ont **exactement** le même
+    score : au-delà d'un certain C, augmenter C ne change plus rien.
+- **Leçons.**
+  1. **Le levier principal est gamma, pas C.** Il passe de 0,00043 (scale) à 0,0008
+     dans 3 découpages sur 5. Le défaut était un peu trop « doux » : léger excès de biais.
+  2. **Le plateau en C.** Quand le modèle classe déjà tous les exemples d'entraînement,
+     augmenter C (moins de tolérance aux erreurs) ne change plus la frontière. Sur ce
+     plateau, les égalités choisissent le plus simple.
+  3. **On évalue une méthode, pas un réglage.** Les réglages choisis varient selon le
+     découpage. L'arbitre a jugé la *procédure* « chercher C et gamma par validation
+     croisée interne ». L'évaluation finale appliquera cette même procédure aux 1 437
+     images de développement.
+  4. **Le coût monte : 33 s** (environ ×20, pour 36 combinaisons × 5 plis × 5
+     répétitions). Il reste de la marge sous 120 s, mais toute idée plus coûteuse devra
+     réduire la grille.
