@@ -392,3 +392,74 @@ nouvelle référence mesurée sur cette machine.
   3. **Le pilote a joué son rôle.** Une idée nuisible a été écartée sans dépenser de
      budget ni user la validation. Le seuil fixé à l'avance a rendu la décision
      automatique, même si l'idée corrigeait bien sa cible (« 8 → 1 »).
+
+---
+
+## Évaluation finale (une seule fois)
+- **Modèle retenu.** Exp 3 : SVC RBF sur pixels bruts, C et gamma choisis par validation
+  croisée interne (36 combinaisons). Réentraîné sur les 1 437 images de développement.
+- **Attente écrite avant le lancement.**
+  - Exactitude sur le test : environ 0,98 à 1,00. Pour n = 360 et p ≈ 0,99,
+    l'intervalle de confiance à 95 % fait environ ±1 point.
+  - Une baisse modérée par rapport à la validation (0,9906) serait normale (malédiction
+    du gagnant) et ne remettrait pas en cause la méthode.
+- **Résultat (`final_result.json`, verrouillé).**
+  - Exactitude sur le test : **0,9889**, soit 356/360 et **4 erreurs**.
+    IC 95 % par bootstrap : [0,9778 ; 0,9972]. F1 macro : 0,9888.
+  - Rappel validation : 0,9906, soit un écart de −0,17 point (environ 0,6 image). C'est
+    dans le bruit et conforme à l'attente ; aucun signe de sur-ajustement à la validation.
+  - Les 4 erreurs : **8 → 1 ×2**, 6 → 8 ×1, 9 → 7 ×1. La confusion « 8 → 1 », déjà
+    dominante en validation, persiste.
+  - Réglage choisi par le modèle final (CV interne sur le développement) : C=1, γ=0,0008.
+  - Une seconde tentative d'évaluation finale a été refusée : le verrou fonctionne.
+
+---
+
+## Bilan de la recherche
+
+| Étape | Idée | Validation | Décision |
+|---|---|---|---|
+| Exp 0 | Régression logistique + StandardScaler | 0,9633 | RÉFÉRENCE |
+| Exp 1 | SVC RBF | 0,9789 | ACCEPTE |
+| Exp 2 | Sans StandardScaler (pixels bruts) | 0,9856 | ACCEPTE |
+| Exp 3 | C et γ par validation croisée interne | **0,9906** | ACCEPTE (retenu) |
+| Exp 4 | Augmentation par décalages | 0,9894 | REJETE |
+| Exp 5 | Comité SVC + kNN + MLP | 0,9917 (+2/1 800) | REJETE |
+| Pilote | Redressement (deskewing) | net −23 (entraînement) | ARRÊT |
+| **Test** | **Exp 3, une seule fois** | **0,9889** [0,978 ; 0,997] | — |
+
+Budget : 5 expériences sur 10, 1 pilote, 1 amendement de l'arbitre. Erreurs divisées
+par environ 3,3 par rapport à la référence (13,2 → environ 4 sur 360).
+
+### Limites
+1. **Mesure peu précise.** 360 images de test donnent environ ±1 point d'incertitude :
+   on ne peut pas distinguer 98,9 % de 99,5 %. Les dernières idées étaient sous ce seuil
+   de détection.
+2. **Validation réutilisée.** 5 décisions ont été prises sur les mêmes 5 découpages : un
+   léger optimisme est possible. Le test (−0,17 point) indique qu'il est négligeable ici.
+3. **Un seul découpage de test** (graine 42) : un autre tirage pourrait varier d'environ
+   1 point.
+4. **Jeu jouet.** `load_digits` est en 8×8, avec des chiffres déjà centrés et droits.
+   Les conclusions (pas de normalisation par pixel ; augmentation et redressement
+   inutiles) ne se transposent pas à de vraies images, comme MNIST en 28×28.
+5. **Pas mesuré sur l'iMac cible.** Durées et reproductibilité exacte des scores restent
+   à vérifier sur macOS Intel.
+6. **Exp 4 confondue.** La grille a été réduite en même temps que l'augmentation.
+7. **Arbitre corrigé en cours de route** (amendement n° 1). Décisions passées
+   revérifiées : inchangées.
+
+### Prochaines hypothèses
+1. **Reproduire sur l'iMac** : `check`, puis la référence dans une copie jetable ; on doit
+   retrouver 0,9556 ; 0,9722 ; 0,9639 ; 0,9667 ; 0,9583.
+2. **Un instrument plus fin** : nouveau protocole avec 20 à 50 découpages répétés (ou
+   une validation croisée répétée), pour détecter des gains de quelques images. Leçon
+   visée : la *puissance statistique*.
+3. **Cibler « 8 → 1 »** par des variables de forme (nombre de boucles fermées, profils
+   des lignes et colonnes), en passant d'abord par un pilote.
+4. **Savoir dire « je ne sais pas »** : probabilités calibrées et abstention sur les
+   formes ambiguës. Mesure : exactitude contre taux de réponse.
+5. **Passer à MNIST 28×28** (téléchargement nécessaire, accord à demander) : vérifier si
+   l'augmentation et le redressement, inutiles ici, deviennent utiles à plus haute
+   résolution.
+6. **Automatiser la boucle** (un agent propose, modifie `train.py`, lance, décide) :
+   nécessiterait une API payante, donc l'accord explicite de l'utilisateur.
